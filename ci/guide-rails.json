@@ -48,50 +48,10 @@
 						}
 					]
 				},
-				"exit_actions": {
-					"default": {
-						"fetch_logs": true,
-						"code_analysis": {
-							"publish": true,
-							"properties": null
-						},
-						"delete_instances": true
-					},
-					"on_success": {
-						"code_analysis": null
-					},
-					"on_failure": {
-						"code_analysis": null
-					},
-					"on_abort": {
-						"code_analysis": null
-					}
-				},
-				"deployment_strategy": {
-					"canary_watch_time": "",
-					"update_watch_time": "",
-					"serial": false
-				},
+				"exit_actions": {},
+				"deployment_strategy": {},
 				"application_init": {},
-				"packages": [
-					{
-						"name": "HelloWorld",
-						"downloads": [],
-						"files": [
-							"target/HelloWorld*"
-						]
-					},
-					{
-						"name": "jdk",
-						"downloads": [
-							{
-								"link": "https://s3.amazonaws.com/calculi-middleware/jdk-((jdk.version))_linux-x64_bin.tar.gz",
-								"name": "jdk.tar.gz"
-							}
-						],
-						"package_install_command": "tar xzf jdk/jdk.tar.gz\ncp -Rf jdk-((jdk.version))/* ${BOSH_INSTALL_TARGET}"
-					}
-				],
+				"packages": [],
 				"instance_tags": [
 					{
 						"name": "application.name",
@@ -99,52 +59,14 @@
 						"when": "0001-01-01T00:00:00Z"
 					}
 				],
-				"post_deployment_actions": {
-					"loadbalancer": {}
-				},
-				"cache_info": {
-					"paths": [
-						"((maven.repo.local))"
-					]
-				},
 				"tasks": [
 					{
 						"name": "simple-hello-world-java",
 						"steps": [
 							{
-								"name": "print env",
-								"definition": "print env",
-								"command": "env | sort\n",
-								"properties": null
-							},
-							{
-								"name": "build",
-								"definition": "build",
-								"command": "mvn compile",
-								"properties": null
-							},
-							{
-								"name": "test",
-								"definition": "test",
-								"command": "mvn surefire-report:report \n\nmvn cobertura:cobertura  -Dcobertura.report.format=xml  -Dcobertura.aggregate=true install -e",
-								"properties": null
-							},
-							{
-								"name": "create jar",
-								"definition": "create jar",
-								"command": "echo \"application version ${APPLICATION_VERSION}\"\nmvn versions:set -DnewVersion=${APPLICATION_VERSION}\nmvn package",
-								"properties": null
-							},
-							{
-								"name": "list ",
-								"definition": "list ",
-								"command": "ls -R",
-								"properties": null
-							},
-							{
-								"name": "convert-coverage",
-								"definition": "convert-coverage",
-								"command": "cp target/surefire-reports/TEST-*.xml test.xml",
+								"name": "hello",
+								"definition": "hello",
+								"command": "echo \"Hello world\"",
 								"properties": null
 							}
 						],
@@ -153,21 +75,12 @@
 				]
 			},
 			{
-				"name": "Isolation",
-				"segment_type": "isolation",
-				"persistent": true,
+				"name": "Integration",
+				"segment_type": "integration",
 				"run_after": [
 					"Build"
 				],
-				"exit_actions": {
-					"default": {
-						"fetch_logs": true,
-						"code_analysis": {
-							"properties": null
-						},
-						"delete_instances": true
-					}
-				},
+				"exit_actions": {},
 				"deployment_strategy": {
 					"canaries": 1,
 					"max_in_flight": 1,
@@ -176,148 +89,74 @@
 					"serial": false
 				},
 				"application_init": {},
-				"process": {
-					"init": {}
-				},
-				"package_dependencies": [
-					"HelloWorld",
-					"jdk"
-				],
 				"instance_tags": [
 					{
 						"name": "application.name",
-						"value": "((application.name))",
-						"when": "0001-01-01T00:00:00Z"
+						"value": "((application.name))"
 					}
 				],
-				"instance_groups": [
+				"k8s_instance_groups": [
 					{
+						"tool_config_alias_id": "d8128ad3-5876-4c73-6ea2-dbb72e8530cc",
+						"docker_registry_alias_id": "f7dbc8f1-07e9-4626-4f99-2f6473dfdae0",
 						"name": "((application.name))",
-						"number_of_instances": 1,
-						"cloud_provider_type": "aws",
-						"cloud_provider_name": "guide-rails-aws-us-west-2",
-						"vm_type": "default",
-						"os_type": "default",
-						"networks": [
-							"isolation"
+						"cluster_name": "",
+						"namespace": "((application.name))-((application.branch))",
+						"replicas": 1,
+						"containers": [
+							{
+								"name": "((application.name))",
+								"image": "vwatinteg/((application.name)):((application.version))",
+								"ports": [
+									{
+										"name": "app-endpoint",
+										"hostPort": 8080,
+										"containerPort": 8080,
+										"protocol": "TCP"
+									}
+								],
+								"resources": {},
+								"imagePullPolicy": "Always"
+							}
 						],
-						"availability_zones": [
-							"default"
-						],
-						"deployment_strategy": {},
-						"dependencies": []
+						"ingress_enabled": true,
+						"ingress": {
+							"metadata": {
+								"creationTimestamp": null
+							},
+							"spec": {
+								"rules": [
+									{
+										"host": "((application.name)).scratch.arc.beescloud.com",
+										"http": {
+											"paths": [
+												{
+													"path": "/",
+													"backend": {
+														"servicePort": 0
+													}
+												}
+											]
+										}
+									}
+								]
+							},
+							"status": {
+								"loadBalancer": {}
+							}
+						},
+						"load_balancing_type": 2,
+						"service_name": "((application.name))-((application.branch))",
+						"type": "Deployment",
+						"deploy_application": true
 					}
 				],
-				"post_deployment_actions": {
-					"loadbalancer": {}
-				},
-				"deployment_target": 1,
-				"releases": [
-					{
-						"name": "consul",
-						"version": "latest"
-					}
-				]
-			},
-			{
-				"name": "Production",
-				"segment_type": "production",
-				"run_after": [
-					"Build"
-				],
-				"exit_actions": {
-					"default": {
-						"fetch_logs": true,
-						"code_analysis": {
-							"properties": null
-						}
-					},
-					"on_success": {
-						"code_analysis": {
-							"properties": null
-						}
-					},
-					"on_failure": {
-						"code_analysis": {
-							"properties": null
-						}
-					},
-					"on_abort": {
-						"code_analysis": {
-							"properties": null
-						}
-					}
-				},
-				"deployment_strategy": {
-					"canaries": 1,
-					"max_in_flight": 1,
-					"canary_watch_time": "120000-240000",
-					"update_watch_time": "120000-240000",
-					"serial": false
-				},
-				"application_init": {},
-				"process": {
-					"init": {
-						"command": "bin/start-service.sh "
-					}
-				},
-				"package_dependencies": [
-					"HelloWorld",
-					"jdk"
-				],
-				"instance_tags": [
-					{
-						"name": "application.name",
-						"value": "((application.name))",
-						"when": "0001-01-01T00:00:00Z"
-					}
-				],
-				"instance_groups": [
-					{
-						"name": "((application.name))",
-						"number_of_instances": 1,
-						"cloud_provider_type": "aws",
-						"cloud_provider_name": "guide-rails-aws-us-west-2",
-						"vm_type": "default",
-						"os_type": "default",
-						"networks": [
-							"production"
-						],
-						"availability_zones": [
-							"default"
-						],
-						"deployment_strategy": {},
-						"dependencies": []
-					}
-				],
-				"gated": true,
-				"post_deployment_actions": {
-					"loadbalancer": {}
-				},
-				"cache_info": {},
-				"tasks": [
-					{
-						"name": "simple-hello-world-java"
-					}
-				],
-				"deployment_target": 1,
-				"releases": [
-					{
-						"id": "dccb10e9-9b24-4519-4394-7e5603a5cc9c",
-						"name": "consul",
-						"version": "latest"
-					}
-				]
+				"deployment_target": 2
 			}
 		],
 		"exit_actions": {
 			"default": {
-				"fetch_logs": true,
-				"code_analysis": {
-					"publish": true,
-					"properties": []
-				},
-				"delete_instances": true
+				"code_analysis": null
 			},
 			"on_success": {
 				"code_analysis": null
@@ -375,201 +214,5 @@
 	},
 	"organization": {
 		"orgname": "Tutorial"
-	},
-	"infrastructure": {
-		"stemcells": [
-			{
-				"alias": "ubuntu-trusty",
-				"os": "ubuntu-trusty",
-				"version": "latest"
-			},
-			{
-				"alias": "ubuntu-xenial",
-				"os": "ubuntu-xenial",
-				"version": "latest"
-			},
-			{
-				"alias": "windows1803",
-				"os": "windows1803",
-				"version": "latest"
-			},
-			{
-				"alias": "windows2012R2",
-				"os": "windows2012R2",
-				"version": "latest"
-			},
-			{
-				"alias": "default",
-				"os": "ubuntu",
-				"version": "18.04.6"
-			},
-			{
-				"alias": "centos-7",
-				"os": "centos-7",
-				"version": "latest"
-			}
-		],
-		"resources": [
-			{
-				"name": "pipeline",
-				"image": {
-					"name": "docker-registry.query.consul:443/pipeline-image-cli-gx-6978-test",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "deployment",
-				"image": {
-					"name": "docker-registry.query.consul:443/pipeline-image-cli-gx-6978-test",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "eks-tools",
-				"image": {
-					"name": "docker-registry.service.consul:443/pipeline-image-eks-tools",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "idgenerator",
-				"image": {
-					"name": "docker-registry.query.consul:443/gr-id-generator",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "emitter",
-				"image": {
-					"name": "docker-registry.query.consul:443/guide-rails-emitter-gx-6978-test",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "git-resource",
-				"image": {
-					"name": "docker-registry.query.consul:443/gr-git-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "gerrit-resource",
-				"image": {
-					"name": "docker-registry.service.consul:443/gr-gerrit-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "build-breaker",
-				"image": {
-					"name": "docker-registry.query.consul:443/gr-build-breaker",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "s3",
-				"image": {
-					"name": "docker-registry.query.consul:443/concourse-s3-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "slack",
-				"image": {
-					"name": "docker-registry.query.consul:443/concourse-slack-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "email",
-				"image": {
-					"name": "docker-registry.query.consul:443/gr-email-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "sonar",
-				"image": {
-					"name": "docker-registry.query.consul:443/concourse-sonarqube-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "time",
-				"image": {
-					"name": "docker-registry.query.consul:443/gr-time-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "azure-blobstore",
-				"image": {
-					"name": "docker-registry.query.consul:443/concourse-azure-blobstore-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "gr-gcs-resource",
-				"image": {
-					"name": "docker-registry.query.consul:443/gr-gcs-resource",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "veracode-scanner",
-				"image": {
-					"name": "docker-registry.query.consul:443/veracode-scanner",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "netsparker-scanner",
-				"image": {
-					"name": "docker-registry.service.consul:443/netsparker-scanner",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "docker-resource",
-				"image": {
-					"name": "docker-registry.query.consul:443/gr-docker-image",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			},
-			{
-				"name": "build",
-				"image": {
-					"name": "docker-registry.query.consul:443/pipeline-image-java-tools",
-					"version": "latest",
-					"location": "docker-registry.service.consul:443"
-				}
-			}
-		],
-		"notification_configurations": [],
-		"vault": {},
-		"concourse": {
-			"address": "https://concourse-web.service.consul",
-			"team": "main"
-		},
-		"mq": {},
-		"bosh": {}
 	}
 }
